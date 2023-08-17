@@ -66,9 +66,9 @@ export default class Sketch {
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2()
 
-    // global size of data texture on the grid
+    // global size of data texture or particles on the grid
     // this.size = 128;
-    this.size = 256;
+    this.size = 512;
     this.number = this.size * this.size;
 
     this.setupSettings()
@@ -141,8 +141,8 @@ export default class Sketch {
         }
         data[ 4 * index ] = randomPixel.x + (Math.random()-0.5)*0.01;
         data[ 4 * index + 1 ] = randomPixel.y + (Math.random()-0.5)*0.01;
-        data[ 4 * index + 2 ] = Math.random()*0.01;
-        data[ 4 * index + 3 ] = Math.random()*0.01;
+        data[ 4 * index + 2 ] = (Math.random()-0.5)*0.01;
+        data[ 4 * index + 3 ] = (Math.random()-0.5)*0.01;
       }
     }
     let dataTexture = new THREE.DataTexture( data, this.size, this.size, THREE.RGBAFormat, THREE.FloatType );
@@ -216,6 +216,7 @@ export default class Sketch {
         // t1: { value: new THREE.TextureLoader().load(texture) },
         // t1: { value: this.positions },
         uMouse: { value: new THREE.Vector3(0, 0, 0) },
+        uTime: { value: 0 },
         uProgress: { value: 0 },
         // original code before adding getPixeldata images
         // uCurrentPosition: { value: this.positions },
@@ -347,6 +348,7 @@ export default class Sketch {
 
     this.material.uniforms.t1.value = this.renderTarget.texture;
     this.simMaterial.uniforms.uCurrentPosition.value = this.renderTarget1.texture
+    this.simMaterial.uniforms.uTime.value = this.time
 
     requestAnimationFrame(this.render.bind(this));
   }

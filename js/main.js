@@ -74,8 +74,11 @@ export default class Sketch {
     this.setupSettings()
     
     Promise.all([this.getPixelDataFromImage(t2), this.getPixelDataFromImage(t3)]).then((textures) => {
-      this.data1 = textures[0]
-      this.data2 = textures[1]
+      // original images data textures below
+      // this.data1 = textures[0]
+      // this.data2 = textures[1]
+      this.data1 = this.getPointsOnSphere()
+      this.data2 = this.getPointsOnSphere()
       // this.getPixelDataFromImage(t2)
       this.mouseEvents();
       this.setupFBO();
@@ -108,6 +111,32 @@ export default class Sketch {
     this.camera.updateProjectionMatrix();
   }
 
+  // new 3D image data
+  getPointsOnSphere() {
+    const data = new Float32Array( 4 * this.number)
+    for ( let i = 0; i < this.size; i++ ) {
+      for ( let j = 0; j < this.size; j++) {
+        const index = i * this.size + j;
+        
+        // generate points on a sphere
+        let theta = Math.random() * Math.PI * 2;
+        let phi = Math.acos(Math.random() * 2 - 1);
+        let x = Math.sin(phi) * Math.cos(theta);
+        let y = Math.sin(phi) * Math.sin(theta);
+        let z = Math.cos(phi);
+
+        data[ 4 * index ] = x;
+        data[ 4 * index + 1 ] = y;
+        data[ 4 * index + 2 ] = z;
+        data[ 4 * index + 3 ] = (Math.random()-0.5)*0.01;
+      }
+    }
+    let dataTexture = new THREE.DataTexture( data, this.size, this.size, THREE.RGBAFormat, THREE.FloatType );
+    dataTexture.needsUpdate = true;
+    return dataTexture
+  }
+
+  // original 2D image data
   async getPixelDataFromImage(url) {
     let img = await loadImage(url)
     let width = 200
@@ -252,7 +281,7 @@ export default class Sketch {
   }
 
   addObjects() {
-    // original -> moved to FBO scene
+    // original -> moved to top as global
     // this.size = 32;
     // this.number = this.size * this.size;
 

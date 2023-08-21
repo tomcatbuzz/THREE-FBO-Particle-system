@@ -7,7 +7,12 @@ void main() {
   vUv = uv;
   vec3 newpos = position;
   vec4 color = texture2D( t1, vUv);
-  newpos.xy = color.xy;
+  // original 2D render
+  // newpos.xy = color.xy;
+
+  // 3D position
+  newpos.xyz = color.xyz;
+
   // newpos.x += 1.;
   // newpos.x += 0.25;
   // newpos.z += sin( time + position.x*10. ) * 0.5;

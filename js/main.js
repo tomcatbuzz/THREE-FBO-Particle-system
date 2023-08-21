@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
 import GUI from 'lil-gui';
 
 import fragment from './shaders/fragment.glsl';
@@ -82,6 +83,7 @@ export default class Sketch {
       // this.getPixelDataFromImage(t2)
       this.mouseEvents();
       this.setupFBO();
+      this.initGPGPU();
       this.addObjects();
       this.setupResize();
       this.render();
@@ -181,7 +183,9 @@ export default class Sketch {
 
   mouseEvents() {
     this.planeMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(10, 10),
+      // use plane geo for 2D
+      // new THREE.PlaneGeometry(10, 10),
+      new THREE.SphereGeometry(1, 30, 30),
       new THREE.MeshBasicMaterial()
     )
     this.dummy = new THREE.Mesh(
@@ -199,8 +203,32 @@ export default class Sketch {
           // console.log(intersects[0].point)
           this.dummy.position.copy(intersects[0].point)
           this.simMaterial.uniforms.uMouse.value = intersects[0].point
+          // added for gpgpu new functions
+          this.positionUniforms.uMouse.value = intersects[0].point
         }
     })
+  }
+
+  initGPGPU() {
+    this.gpuCompute = new GPUComputationRenderer( this.size, this.size, this.renderer );
+
+    if ( this.renderer.capabilities.isWebGL2 === false ) {
+      this.gpuCompute.setDataType( THREE.HalfFloatType );
+    }
+
+    this.pointsOnSphere = this.getPointsOnSphere()
+
+    this.positionVariable = this.gpuCompute.addVariable( 'uCurrentPosition', simFragment, this.pointsOnSphere );
+
+    this.gpuCompute.setVariableDependencies( this.positionVariable, [ this.positionVariable ] );
+    
+		this.positionUniforms = this.positionVariable.material.uniforms;
+
+    this.positionUniforms.uTime = { value: 0 };
+		this.positionUniforms.uMouse = { value: new THREE.Vector3(0, 0, 0) };
+    this.positionUniforms.uOriginalPosition = { value: this.pointsOnSphere };
+
+    this.gpuCompute.init()
   }
 
   setupFBO() {
@@ -364,20 +392,28 @@ export default class Sketch {
     // this.mesh.rotation.x = this.time / 20;
     // this.mesh.rotation.y = this.time / 10;
 
-    this.renderer.setRenderTarget(this.renderTarget);    
-    this.renderer.render(this.sceneFBO, this.cameraFBO);
+    // code before adding gpgpu functions
+    // this.renderer.setRenderTarget(this.renderTarget);    
+    // this.renderer.render(this.sceneFBO, this.cameraFBO);
 
-    this.renderer.setRenderTarget(null);
+    // this.renderer.setRenderTarget(null);
+    this.gpuCompute.compute()
     this.renderer.render(this.scene, this.camera);
 
-    // swap renderTargets
-    const tmp = this.renderTarget;
-    this.renderTarget = this.renderTarget1;
-    this.renderTarget1 = tmp;
+    // swap renderTargets code before adding gpgpu functions
+    // const tmp = this.renderTarget;
+    // this.renderTarget = this.renderTarget1;
+    // this.renderTarget1 = tmp;
 
-    this.material.uniforms.t1.value = this.renderTarget.texture;
-    this.simMaterial.uniforms.uCurrentPosition.value = this.renderTarget1.texture
-    this.simMaterial.uniforms.uTime.value = this.time
+    this.material.uniforms.t1.value = this.gpuCompute.getCurrentRenderTarget( this.positionVariable ).texture;
+    this.positionUniforms.uTime.value = this.time;
+
+
+    
+    // originl set and swap renderTargets run before adding gpgpu functions
+    // this.material.uniforms.t1.value = this.renderTarget.texture;
+    // this.simMaterial.uniforms.uCurrentPosition.value = this.renderTarget1.texture
+    // this.simMaterial.uniforms.uTime.value = this.time
 
     requestAnimationFrame(this.render.bind(this));
   }

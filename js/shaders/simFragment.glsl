@@ -1,7 +1,7 @@
-varying vec2 vUv;
+// varying vec2 vUv;
 // uniform sampler2D t1;
 uniform float uProgress;
-uniform sampler2D uCurrentPosition;
+// uniform sampler2D uCurrentPosition;
 uniform sampler2D uOriginalPosition;
 uniform sampler2D uOriginalPosition1;
 uniform vec3 uMouse;
@@ -12,6 +12,7 @@ float rand(vec2 co){
 }
 
 void main()	{
+  vec2 vUv = gl_FragCoord.xy / resolution.xy;
   float offset = rand(vUv);
   // original 2D textures
 	// vec2 position = texture2D( uCurrentPosition, vUv ).xy;
@@ -44,6 +45,14 @@ void main()	{
   //   velocity += direction * 0.0001;
   // }
 
+  // particle attraction to shape force 3D
+  vec3 direction = normalize( finalOriginal - position );
+  float dist = length( finalOriginal - position );
+  if(dist > 0.01) {
+    // can change end value 0.001 for different effect
+    position += direction * 0.001;
+  }
+
   // mouse repel force 2D
   // float mouseDistance = distance( position, uMouse.xy );
   // float maxDistance = 0.1;
@@ -53,6 +62,15 @@ void main()	{
   //   velocity += direction * (1.0 - mouseDistance / maxDistance ) * 0.001;
   // }
 
+  // mouse repel force 3D
+  float mouseDistance = distance( position, uMouse );
+  float maxDistance = 0.1;
+  if( mouseDistance < maxDistance ) {
+    vec3 direction = normalize( position - uMouse );
+    // can change end value 0.001 for different effect
+    position += direction * (1.0 - mouseDistance / maxDistance ) * 0.01;
+  }
+
   // lifespan of particles 2D
   // float lifespan = 20.;
   // float age = mod( uTime + lifespan*offset, lifespan );
@@ -60,6 +78,14 @@ void main()	{
   //   velocity = vec2(0.0, 0.001);
   //   position.xy = finalOriginal;
   // }
+
+  // lifespan of particles 3D
+  float lifespan = 20.;
+  float age = mod( uTime + lifespan*offset, lifespan );
+  if( age < 0.1 ) {
+    // velocity = vec2(0.0, 0.001);
+    position.xyz = finalOriginal;
+  }
 
   // original shader code before adding velocity
   // vec2 force = finalOriginal - uMouse.xy;

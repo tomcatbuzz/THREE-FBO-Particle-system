@@ -6,8 +6,8 @@ import GUI from 'lil-gui';
 import fragment from './shaders/fragment.glsl';
 import vertex from './shaders/vertex.glsl';
 import simVertex from './shaders/simVertex.glsl';
-import simFragment from './shaders/simFragment.glsl';
-
+import simFragmentPosition from './shaders/simFragment.glsl';
+import simFragmentVelocity from './shaders/simFragmentVelocity.glsl';
 
 import texture from '../test.jpg'
 import t2 from '../logo.png'
@@ -113,6 +113,30 @@ export default class Sketch {
     this.camera.updateProjectionMatrix();
   }
 
+  getVelocityOnSphere() {
+    const data = new Float32Array( 4 * this.number)
+    for ( let i = 0; i < this.size; i++ ) {
+      for ( let j = 0; j < this.size; j++) {
+        const index = i * this.size + j;
+        
+        // generate points on a sphere
+        let theta = Math.random() * Math.PI * 2;
+        let phi = Math.acos(Math.random() * 2 - 1);
+        let x = Math.sin(phi) * Math.cos(theta);
+        let y = Math.sin(phi) * Math.sin(theta);
+        let z = Math.cos(phi);
+
+        data[ 4 * index ] = 0;
+        data[ 4 * index + 1 ] = 0;
+        data[ 4 * index + 2 ] = 0;
+        data[ 4 * index + 3 ] = 0;
+      }
+    }
+    let dataTexture = new THREE.DataTexture( data, this.size, this.size, THREE.RGBAFormat, THREE.FloatType );
+    dataTexture.needsUpdate = true;
+    return dataTexture
+  }
+
   // new 3D image data
   getPointsOnSphere() {
     const data = new Float32Array( 4 * this.number)
@@ -205,6 +229,7 @@ export default class Sketch {
           this.simMaterial.uniforms.uMouse.value = intersects[0].point
           // added for gpgpu new functions
           this.positionUniforms.uMouse.value = intersects[0].point
+          this.velocityUniforms.uMouse.value = intersects[0].point
         }
     })
   }
@@ -216,17 +241,24 @@ export default class Sketch {
       this.gpuCompute.setDataType( THREE.HalfFloatType );
     }
 
-    this.pointsOnSphere = this.getPointsOnSphere()
+    this.pointsOnSphere = this.getPointsOnSphere();
+    this.velocityOnSphere = this.getVelocityOnSphere();
 
-    this.positionVariable = this.gpuCompute.addVariable( 'uCurrentPosition', simFragment, this.pointsOnSphere );
+    this.positionVariable = this.gpuCompute.addVariable( 'uCurrentPosition', simFragmentPosition, this.pointsOnSphere );
+    this.velocityVariable = this.gpuCompute.addVariable( 'uCurrentVelocity', simFragmentVelocity, this.velocityOnSphere );
 
-    this.gpuCompute.setVariableDependencies( this.positionVariable, [ this.positionVariable ] );
+    this.gpuCompute.setVariableDependencies( this.positionVariable, [ this.positionVariable, this.velocityVariable ] );
+    this.gpuCompute.setVariableDependencies( this.velocityVariable, [ this.velocityVariable, this.positionVariable ] );
     
 		this.positionUniforms = this.positionVariable.material.uniforms;
+    this.velocityUniforms = this.velocityVariable.material.uniforms;
 
     this.positionUniforms.uTime = { value: 0 };
+    this.velocityUniforms.uTime = { value: 0 };
 		this.positionUniforms.uMouse = { value: new THREE.Vector3(0, 0, 0) };
+    this.velocityUniforms.uMouse = { value: new THREE.Vector3(0, 0, 0) };
     this.positionUniforms.uOriginalPosition = { value: this.pointsOnSphere };
+    this.velocityUniforms.uOriginalPosition = { value: this.pointsOnSphere };
 
     this.gpuCompute.init()
   }
@@ -288,7 +320,7 @@ export default class Sketch {
       // wireframe: true,
       // transparent: true,
       vertexShader: simVertex,
-      fragmentShader: simFragment
+      fragmentShader: simFragmentPosition
     });
     this.simMesh = new THREE.Mesh(geo, this.simMaterial);
     this.sceneFBO.add(this.simMesh);

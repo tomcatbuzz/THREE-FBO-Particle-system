@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GPUComputationRenderer } from 'three/examples/jsm/misc/GPUComputationRenderer.js';
 import GUI from 'lil-gui';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { MeshSurfaceSampler } from 'three/examples/jsm/math/MeshSurfaceSampler.js'
 
 import fragment from './shaders/fragment.glsl';
 import vertex from './shaders/vertex.glsl';
@@ -12,6 +14,8 @@ import simFragmentVelocity from './shaders/simFragmentVelocity.glsl';
 import texture from '../test.jpg'
 import t2 from '../logo.png'
 import t3 from '../super.png'
+import suzanne from '../suzanne.glb?url'
+
 
 function lerp(a, b, n) {
   return (1-n) * a + n * b
@@ -72,9 +76,20 @@ export default class Sketch {
     this.size = 512;
     this.number = this.size * this.size;
 
-    this.setupSettings()
+    this.setupSettings();
+
+    this.loader = new GLTFLoader()
+    this._position = new THREE.Vector3()
     
-    Promise.all([this.getPixelDataFromImage(t2), this.getPixelDataFromImage(t3)]).then((textures) => {
+    Promise.all([this.loader.loadAsync(suzanne)]).then(([model]) => {
+      this.suzanne = model.scene.children[0]
+      console.log(this.suzanne)
+      // this.scene.add(this.suzanne)
+      this.suzanne.geometry.rotateX(-Math.PI/2)
+      this.suzanne.material = new THREE.MeshNormalMaterial()
+      this.sampler = new MeshSurfaceSampler( this.suzanne )
+      // .setWeightAttribute( 'color' )
+      .build()
       // original images data textures below
       // this.data1 = textures[0]
       // this.data2 = textures[1]
@@ -162,6 +177,26 @@ export default class Sketch {
     return dataTexture
   }
 
+  getPointsOnSuzanne() {
+    const data = new Float32Array( 4 * this.number)
+    for ( let i = 0; i < this.size; i++ ) {
+      for ( let j = 0; j < this.size; j++) {
+        const index = i * this.size + j;
+        
+        // generate points on a model
+        this.sampler.sample( this._position )
+
+        data[ 4 * index ] = this._position.x;
+        data[ 4 * index + 1 ] = this._position.y;
+        data[ 4 * index + 2 ] = this._position.z;
+        data[ 4 * index + 3 ] = (Math.random()-0.5)*0.01;
+      }
+    }
+    let dataTexture = new THREE.DataTexture( data, this.size, this.size, THREE.RGBAFormat, THREE.FloatType );
+    dataTexture.needsUpdate = true;
+    return dataTexture
+  }
+
   // original 2D image data
   async getPixelDataFromImage(url) {
     let img = await loadImage(url)
@@ -241,8 +276,11 @@ export default class Sketch {
       this.gpuCompute.setDataType( THREE.HalfFloatType );
     }
 
-    this.pointsOnSphere = this.getPointsOnSphere();
+    // this.pointsOnSphere = this.getPointsOnSphere();
     this.velocityOnSphere = this.getVelocityOnSphere();
+
+    // model
+    this.pointsOnSphere = this.getPointsOnSuzanne();
 
     this.positionVariable = this.gpuCompute.addVariable( 'uCurrentPosition', simFragmentPosition, this.pointsOnSphere );
     this.velocityVariable = this.gpuCompute.addVariable( 'uCurrentVelocity', simFragmentVelocity, this.velocityOnSphere );

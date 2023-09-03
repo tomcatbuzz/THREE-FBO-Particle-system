@@ -34,7 +34,7 @@ void main()	{
 
   // mouse repel force 3D
   float mouseDistance = distance( position, uMouse );
-  float maxDistance = 0.1;
+  float maxDistance = 0.3;
   if( mouseDistance < maxDistance ) {
     vec3 direction = normalize( position - uMouse );
     // can change end value 0.001 for different effect

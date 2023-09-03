@@ -241,10 +241,11 @@ export default class Sketch {
   }
 
   mouseEvents() {
-    this.planeMesh = new THREE.Mesh(
+    this.raycasterMesh = new THREE.Mesh(
       // use plane geo for 2D
       // new THREE.PlaneGeometry(10, 10),
-      new THREE.SphereGeometry(1, 30, 30),
+      // new THREE.SphereGeometry(1, 30, 30),
+      this.suzanne.geometry,
       new THREE.MeshBasicMaterial()
     )
     this.dummy = new THREE.Mesh(
@@ -257,7 +258,7 @@ export default class Sketch {
       this.pointer.y = -(e.clientY/ this.height) * 2 + 1;
       this.raycaster.setFromCamera(this.pointer, this.camera);
 
-      const intersects = this.raycaster.intersectObjects( [this.planeMesh] );
+      const intersects = this.raycaster.intersectObjects( [this.raycasterMesh] );
         if (intersects.length > 0) {
           // console.log(intersects[0].point)
           this.dummy.position.copy(intersects[0].point)

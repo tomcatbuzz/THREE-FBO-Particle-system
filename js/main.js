@@ -17,6 +17,10 @@ import t2 from '../logo.png'
 import t3 from '../super.png'
 import suzanne from '../suzanne.glb?url'
 import matcap from '../matcap.png'
+import matcap1 from '../matcap1.png'
+import matcap2 from '../matcap2.png'
+import matcap3 from '../matcap3.png'
+import matcap4 from '../matcap4.png'
 
 
 function lerp(a, b, n) {
@@ -75,7 +79,7 @@ export default class Sketch {
 
     // global size of data texture or particles on the grid
     // this.size = 128;
-    this.size = 128;
+    this.size = 256;
     this.number = this.size * this.size;
 
     this.setupSettings();
@@ -431,7 +435,7 @@ export default class Sketch {
         // t1: { value: new THREE.TextureLoader().load(texture) },
         t1: { value: this.positions },
         uVelocity: { value: null },
-        uMatcap: { value: new THREE.TextureLoader().load(matcap) },
+        uMatcap: { value: new THREE.TextureLoader().load(matcap4) },
         resolution: { value: new THREE.Vector4() },
         uvRate1: { value: new THREE.Vector2(1, 1) },
       },
@@ -446,7 +450,7 @@ export default class Sketch {
     
 
     // this.mesh = new THREE.Points(this.geometry, this.material);
-    this.geometryInstanced = new THREE.BoxGeometry(0.01, 0.01, 0.01)
+    this.geometryInstanced = new THREE.BoxGeometry(0.1, 0.01, 0.01)
     this.mesh = new THREE.InstancedMesh(this.geometryInstanced, this.material, this.number)
     // create instance uv reference
     let uvInstanced = new Float32Array(this.number * 2)

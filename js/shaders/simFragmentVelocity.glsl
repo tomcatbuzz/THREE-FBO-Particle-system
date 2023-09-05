@@ -29,7 +29,7 @@ void main()	{
   float dist = length( original - position );
   if(dist > 0.01) {
     // can change end value 0.001 for different effect
-    velocity += direction * 0.001;
+    velocity += direction * 0.0001;
   }
 
   // mouse repel force 3D
@@ -42,12 +42,12 @@ void main()	{
   }
 
   // lifespan of particles 3D
-  // float lifespan = 20.;
-  // float age = mod( uTime + lifespan*offset, lifespan );
-  // if( age < 0.1 ) {
-  //   // velocity = vec2(0.0, 0.001);
-  //   position.xyz = finalOriginal;
-  // }
+  float lifespan = 20.;
+  float age = mod( uTime + lifespan*offset, lifespan );
+  if( age < 0.1 ) {
+    // velocity = vec2(0.0, 0.001);
+    position.xyz = original;
+  }
 
   gl_FragColor = vec4(velocity, 1.);
 }

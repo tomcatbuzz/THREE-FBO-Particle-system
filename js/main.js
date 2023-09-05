@@ -10,11 +10,13 @@ import vertex from './shaders/vertex.glsl';
 import simVertex from './shaders/simVertex.glsl';
 import simFragmentPosition from './shaders/simFragment.glsl';
 import simFragmentVelocity from './shaders/simFragmentVelocity.glsl';
+import vertexInstanced from './shaders/vertexInstanced.glsl';
 
 import texture from '../test.jpg'
 import t2 from '../logo.png'
 import t3 from '../super.png'
 import suzanne from '../suzanne.glb?url'
+import matcap from '../matcap.png'
 
 
 function lerp(a, b, n) {
@@ -73,7 +75,7 @@ export default class Sketch {
 
     // global size of data texture or particles on the grid
     // this.size = 128;
-    this.size = 512;
+    this.size = 128;
     this.number = this.size * this.size;
 
     this.setupSettings();
@@ -250,9 +252,11 @@ export default class Sketch {
     )
     this.dummy = new THREE.Mesh(
       new THREE.SphereGeometry(0.01, 32, 32), 
+      // new THREE.MeshNormalMaterial()
       new THREE.MeshNormalMaterial()
     )
     this.scene.add(this.dummy)
+    console.log(this.dummy, 'dummy')
     window.addEventListener('mousemove', (e) => {
       this.pointer.x = (e.clientX / this.width) * 2 - 1;
       this.pointer.y = -(e.clientY/ this.height) * 2 + 1;
@@ -422,24 +426,38 @@ export default class Sketch {
       uniforms: {
         time: { value: 0 },
         progress: { value: 0 },
-        texture1: { value: null },
+        // texture1: { value: null },
         // test texture
         // t1: { value: new THREE.TextureLoader().load(texture) },
         t1: { value: this.positions },
+        uVelocity: { value: null },
+        uMatcap: { value: new THREE.TextureLoader().load(matcap) },
         resolution: { value: new THREE.Vector4() },
         uvRate1: { value: new THREE.Vector2(1, 1) },
       },
       // wireframe: true,
       // transparent: true,
-      vertexShader: vertex,
+      vertexShader: vertexInstanced,
       fragmentShader: fragment,
-      depthWrite: false,
-      depthTest: false,
-      transparent: true
+      // depthWrite: false,
+      // depthTest: false,
+      // transparent: true
     });
     
 
-    this.mesh = new THREE.Points(this.geometry, this.material);
+    // this.mesh = new THREE.Points(this.geometry, this.material);
+    this.geometryInstanced = new THREE.BoxGeometry(0.01, 0.01, 0.01)
+    this.mesh = new THREE.InstancedMesh(this.geometryInstanced, this.material, this.number)
+    // create instance uv reference
+    let uvInstanced = new Float32Array(this.number * 2)
+    for (let i = 0; i < this.size; i++) {
+      for (let j = 0; j < this.size; j++) {
+        const index = i * this.size + j;
+        uvInstanced[2 * index] = j / (this.size - 1);
+        uvInstanced[2 * index + 1] = i / (this.size - 1)
+      }
+    }
+    this.geometryInstanced.setAttribute("uvRef", new THREE.InstancedBufferAttribute(uvInstanced, 2));
     this.scene.add(this.mesh);
   }
 
@@ -463,10 +481,6 @@ export default class Sketch {
     // this.mesh.rotation.x = this.time / 20;
     // this.mesh.rotation.y = this.time / 10;
 
-    // code before adding gpgpu functions
-    // this.renderer.setRenderTarget(this.renderTarget);    
-    // this.renderer.render(this.sceneFBO, this.cameraFBO);
-
     // this.renderer.setRenderTarget(null);
     this.gpuCompute.compute()
     this.renderer.render(this.scene, this.camera);
@@ -477,6 +491,8 @@ export default class Sketch {
     // this.renderTarget1 = tmp;
 
     this.material.uniforms.t1.value = this.gpuCompute.getCurrentRenderTarget( this.positionVariable ).texture;
+    this.positionUniforms.uTime.value = this.time;
+    this.material.uniforms.uVelocity.value = this.gpuCompute.getCurrentRenderTarget( this.velocityVariable ).texture;
     this.positionUniforms.uTime.value = this.time;
 
 
